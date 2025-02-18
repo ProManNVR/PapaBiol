@@ -29,10 +29,13 @@ async def grant_access(update: Update, context: CallbackContext) -> None:
         return
     
     if context.args:
-        user_id = int(context.args[0])  # Getting user ID from the arguments
-        AUTHORIZED_USERS.add(user_id)
-        save_auth_users()
-        await update.message.reply_text(f"✅ User {user_id} has been granted access.")
+        try:
+            user_id = int(context.args[0])  # Getting user ID from the arguments
+            AUTHORIZED_USERS.add(user_id)
+            save_auth_users()
+            await update.message.reply_text(f"✅ User {user_id} has been granted access.")
+        except ValueError:
+            await update.message.reply_text("⚠️ Please provide a valid user ID.")
     else:
         await update.message.reply_text("⚠️ Usage: /grant <user_id>")
 
@@ -42,10 +45,13 @@ async def revoke_access(update: Update, context: CallbackContext) -> None:
         return
     
     if context.args:
-        user_id = int(context.args[0])  # Getting user ID from the arguments
-        AUTHORIZED_USERS.discard(user_id)
-        save_auth_users()
-        await update.message.reply_text(f"❌ User {user_id} has been revoked access.")
+        try:
+            user_id = int(context.args[0])  # Getting user ID from the arguments
+            AUTHORIZED_USERS.discard(user_id)
+            save_auth_users()
+            await update.message.reply_text(f"❌ User {user_id} has been revoked access.")
+        except ValueError:
+            await update.message.reply_text("⚠️ Please provide a valid user ID.")
     else:
         await update.message.reply_text("⚠️ Usage: /revoke <user_id>")
 
@@ -64,9 +70,11 @@ async def handle_document(update: Update, context: CallbackContext) -> None:
     file_path = f"downloads/{file.file_name}"
     os.makedirs("downloads", exist_ok=True)
     
-    file_id = file.file_id
-    new_file = await context.bot.get_file(file_id)
-    await new_file.download(file_path)
+    # Retrieve the file using the `get_file` method
+    new_file = await context.bot.get_file(file.file_id)
+    
+    # Download the file to the specified path
+    await new_file.download_to_drive(file_path)
     
     await update.message.reply_text("🔄 Processing file... 📂")
     separate_emails(update, file_path)
@@ -131,14 +139,16 @@ def separate_emails(update: Update, file_path):
     update.message.reply_text(summary)
 
 def main():
+    # Create the application using the bot token
     application = Application.builder().token(TOKEN).build()
     
-    # Remove `pass_args=True` and directly use `context.args` inside the handler functions
+    # Add handlers for commands and messages
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("grant", grant_access))
     application.add_handler(CommandHandler("revoke", revoke_access))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     
+    # Start polling for updates
     application.run_polling()
 
 if __name__ == "__main__":
