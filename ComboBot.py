@@ -1,6 +1,5 @@
 import re
 import os
-import telegram
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 
@@ -30,7 +29,7 @@ async def grant_access(update: Update, context: CallbackContext) -> None:
         return
     
     if context.args:
-        user_id = int(context.args[0])
+        user_id = int(context.args[0])  # Getting user ID from the arguments
         AUTHORIZED_USERS.add(user_id)
         save_auth_users()
         await update.message.reply_text(f"✅ User {user_id} has been granted access.")
@@ -43,7 +42,7 @@ async def revoke_access(update: Update, context: CallbackContext) -> None:
         return
     
     if context.args:
-        user_id = int(context.args[0])
+        user_id = int(context.args[0])  # Getting user ID from the arguments
         AUTHORIZED_USERS.discard(user_id)
         save_auth_users()
         await update.message.reply_text(f"❌ User {user_id} has been revoked access.")
@@ -70,7 +69,7 @@ async def handle_document(update: Update, context: CallbackContext) -> None:
     await new_file.download(file_path)
     
     await update.message.reply_text("🔄 Processing file... 📂")
-    await separate_emails(update, file_path)
+    separate_emails(update, file_path)
     
     for provider in ["gmail", "microsoft", "yahoo", "others"]:
         output_file = f"{provider}.txt"
@@ -80,7 +79,7 @@ async def handle_document(update: Update, context: CallbackContext) -> None:
     
     await update.message.reply_text("🎉 Sorting completed! Here are the sorted files.")
 
-async def separate_emails(update: Update, file_path):
+def separate_emails(update: Update, file_path):
     email_providers = {
         "gmail": "gmail.com",
         "microsoft": ["outlook.com", "hotmail.com", "live.com", "msn.com"],
@@ -121,7 +120,7 @@ async def separate_emails(update: Update, file_path):
                     count_per_provider["others"] += 1
                 
                 if total_count % 100 == 0:
-                    await update.message.reply_text(f"📊 Processed {total_count} emails so far...")
+                    update.message.reply_text(f"📊 Processed {total_count} emails so far...")
     
     for file in output_files.values():
         file.close()
@@ -129,14 +128,15 @@ async def separate_emails(update: Update, file_path):
     summary = "📊 Sorting Summary:\n"
     for provider, count in count_per_provider.items():
         summary += f"✅ {provider.capitalize()}: {count}\n"
-    await update.message.reply_text(summary)
+    update.message.reply_text(summary)
 
 def main():
     application = Application.builder().token(TOKEN).build()
     
+    # Remove `pass_args=True` and directly use `context.args` inside the handler functions
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("grant", grant_access, pass_args=True))
-    application.add_handler(CommandHandler("revoke", revoke_access, pass_args=True))
+    application.add_handler(CommandHandler("grant", grant_access))
+    application.add_handler(CommandHandler("revoke", revoke_access))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     
     application.run_polling()
